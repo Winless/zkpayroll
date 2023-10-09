@@ -9,7 +9,8 @@ contract StakePool is Ownable {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
     IERC20 public xld;
-    uint public remainReward;
+    uint public stakingReward;
+    uint public transferReward;
 
     address public rewarder;
 
@@ -20,7 +21,7 @@ contract StakePool is Ownable {
     event Stake(address user, uint amount);
     event Withdraw(address user, uint amount);
     event Claim(address user, uint amount);
-    event AddReward(uint current, uint add);
+    event AddReward(uint transfer, uint staking);
     event SetReward(address[] users, uint[] amounts, uint total);
 
     constructor(IERC20 _xld) {
@@ -50,11 +51,11 @@ contract StakePool is Ownable {
         emit Claim(msg.sender, amount);
     }
 
-    function addReward(uint amount) external {
-        uint current = remainReward;
-        xld.safeTransferFrom(msg.sender, address(this), amount);
-        remainReward = current.add(amount);
-        emit AddReward(current, amount);
+    function addReward(uint _transferReward, uint _stakingReward) external {
+        xld.safeTransferFrom(msg.sender, address(this), _transferReward + _stakingReward);
+        transferReward = transferReward.add(_transferReward);
+        stakingReward = stakingReward.add(_stakingReward);
+        emit AddReward(_transferReward, _stakingReward);
     }
 
     function setRewards(uint[] memory amounts, address[] memory users) external {
@@ -67,8 +68,9 @@ contract StakePool is Ownable {
             total = total.add(amounts[i]);
         }
 
-        require(remainReward >= total, "Remain reward not enough");
-        remainReward = remainReward.sub(total); 
+        require(transferReward.add(stakingReward) >= total, "Remain reward not enough");
+        transferReward = 0;
+        stakingReward = 0;
         emit SetReward(users, amounts, total);  
     }
 }
