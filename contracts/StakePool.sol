@@ -11,6 +11,7 @@ contract StakePool is Ownable {
     IERC20 public xld;
     uint public stakingReward;
     uint public transferReward;
+    uint public totalStake;
 
     address public rewarder;
 
@@ -36,12 +37,14 @@ contract StakePool is Ownable {
     function stake(uint amount) external  {
         xld.safeTransferFrom(msg.sender, address(this), amount);
         stakes[msg.sender] = stakes[msg.sender].add(amount);
+        totalStake = totalStake.add(amount);
         emit Stake(msg.sender, amount);
     }
 
     function withdraw(uint amount) external {
         stakes[msg.sender] = stakes[msg.sender].sub(amount);
         xld.safeTransfer(msg.sender, amount);
+        totalStake = totalStake.sub(amount);
         emit Withdraw(msg.sender, amount);
     }
 
