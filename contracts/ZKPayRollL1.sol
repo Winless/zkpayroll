@@ -63,7 +63,8 @@ contract ZKPayRollL1 {
             );
         uint8 decimals = abi.decode(data, (uint8));
         require(decimals >= 6, "only support decimal greater than 4");
-        require(amount % (10 ** decimals) == 0, "Only supports integers");
+        require(nonce < 10000, "Invalid nonce");
+        require(amount % (10 ** (decimals - 2)) == 0, "Only supports 2 decimals");
         uint actualAmount = amount + nonce * (10 ** (decimals - 6));
         if(token != address(0)) {
             IERC20(token).safeTransferFrom(msg.sender, address(this), actualAmount);
