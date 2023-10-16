@@ -13,6 +13,16 @@
 		  "USDC": "0x515Bc3d5403Fa5d03dADC08bA513278bC73E9165"
 		}
 	},
+	"scroll": {
+		"L1": {
+		  "payroll": "0xC478f74C42bA04324c7128cE5A61D7133E149874",
+		  "USDC": "0xaFAF2e14C65f19CfEcE1F9C91C883b097Be0532C"
+		},
+		 "L2": {
+		  "payroll": "0xBEf512AeA0650Cef220421738c6DB93E690b1a3A",
+		  "USDC": "0xBF1A218247B90D8Bbe4AE0f5C021b807203D3703"
+		}
+	},
 	"staking": {
 		"goerli": {
 			"xld": "0x18c269b4C04aDc3810A506f9F3A553E48c7a6f38",

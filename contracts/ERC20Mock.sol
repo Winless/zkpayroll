@@ -4,8 +4,12 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 // this is a MOCK
 contract ERC20Mock is ERC20 {
-    uint constant InitSupply = 1000000000 * 1e18;
+    uint8 public customDecimals = 18;
+
     constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {
-        _mint(msg.sender, InitSupply);
+    }
+
+    function mint(address _to, uint _amount) public {
+        _mint(_to, _amount);
     }
 }

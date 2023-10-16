@@ -4,8 +4,8 @@ pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-interface IL1bridge {
-    function deposit(
+interface IZKSyncL1bridge {
+    function depositERC20(
         address _l2Receiver,
         address _l1Token,
         uint256 _amount,
@@ -26,25 +26,56 @@ interface IZKSync {
 //0x927ddfcc55164a59e0f33918d13a2d559bc10ce7
 //0x4122342048f9dfc0e44E01d4EC61067B9e39e581
 
+interface IScrollGateway {
+    function depositERC20(
+        address _token,
+        address _to,
+        uint256 _amount,
+        uint256 _gasLimit
+    ) external payable;
+}
+
 contract ZKPayRollL1 {
-    event TransferCommited(address sender, uint totalAmount, address token, uint index, bytes32 l2TxHash);
+    event TransferCommited(address sender, uint totalAmount, address token, uint index, uint chainId);
 
     using SafeERC20 for IERC20;
 
-    uint constant public gasPerPubdataByte = 800;
-    address public bridge = 0x927DdFcc55164a59E0F33918D13a2D559bC10ce7;
-    address public zkSync = 0x1908e2BF4a88F91E4eF0DC72f02b8Ea36BEa2319;
+    uint constant public ZKSYNC = 1;
+    uint constant public SCROLL = 2;
 
-    function estimateGas(uint gasPrice, uint gasUsage) external view returns(uint fee) {
-        fee = IZKSync(zkSync).l2TransactionBaseCost(gasPrice, gasUsage, gasPerPubdataByte);
+    uint constant public gasPerPubdataByte = 800;
+    address public zksync_bridge = 0x927DdFcc55164a59E0F33918D13a2D559bC10ce7;
+    address public zkSync_api = 0x1908e2BF4a88F91E4eF0DC72f02b8Ea36BEa2319;
+
+    address public scroll_gateway = 0x65D123d6389b900d954677c26327bfc1C3e88A13;
+
+    receive() external payable {
+
     }
 
-    function commitTransfer(address l2Contract, address token, uint index, uint amount, uint gasUsage) external payable {
+    function estimateGas(uint gasPrice, uint gasUsage) external view returns(uint fee) {
+        fee = IZKSync(zkSync_api).l2TransactionBaseCost(gasPrice, gasUsage, gasPerPubdataByte);
+    }
+
+    function commitTransfer(address l2Contract, address token, uint nonce, uint chainId, uint amount, uint gasUsage) external payable {
+        (, bytes memory data) = token.staticcall(
+                abi.encodeWithSignature("decimals()")
+            );
+        uint8 decimals = abi.decode(data, (uint8));
+        require(decimals >= 6, "only support decimal greater than 4");
+        require(amount % (10 ** decimals) == 0, "Only supports integers");
+        uint actualAmount = amount + nonce * (10 ** (decimals - 6));
         if(token != address(0)) {
-            IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-            IERC20(token).approve(address(bridge), amount);
-            bytes32 txHash = IL1bridge(bridge).deposit{value: msg.value}(l2Contract, token, amount, gasUsage, gasPerPubdataByte, msg.sender);
-            emit TransferCommited(msg.sender, amount, token, index, txHash);
+            IERC20(token).safeTransferFrom(msg.sender, address(this), actualAmount);
+            if(chainId == ZKSYNC) {
+                IERC20(token).approve(address(zksync_bridge), actualAmount);
+                IZKSyncL1bridge(zksync_bridge).depositERC20{value: msg.value}(l2Contract, token, actualAmount, gasUsage, gasPerPubdataByte, msg.sender);
+                emit TransferCommited(msg.sender, amount, token, nonce, chainId);
+            } else if(chainId == SCROLL) {
+                IERC20(token).approve(address(scroll_gateway), actualAmount);
+                IScrollGateway(scroll_gateway).depositERC20{value: msg.value}(token, l2Contract, actualAmount, gasUsage);
+                emit TransferCommited(msg.sender, amount, token, nonce, chainId);
+            }
         }
     }
 }
