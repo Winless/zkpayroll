@@ -27,6 +27,7 @@ interface IZKSync {
 //ERC20 0xF29678EA751F0EadCee11cE3627469CB0F9B42F5
 //0x927ddfcc55164a59e0f33918d13a2d559bc10ce7
 //0x4122342048f9dfc0e44E01d4EC61067B9e39e581
+// linea bridge 0x32D123756d32d3eD6580935f8edF416e57b940f4
 
 interface IScrollGateway {
     function depositERC20(
@@ -59,6 +60,7 @@ contract ZKPayRollL1 is Ownable {
 
     mapping (uint => uint) public txFees;
     mapping (address => uint) public tokenFees;
+    mapping (uint => mapping (address => address)) public bridges; 
 
     receive() external payable {
 
@@ -70,6 +72,10 @@ contract ZKPayRollL1 is Ownable {
 
     function setFees(uint chainId, uint fee) external onlyOwner {
         txFees[chainId] = fee;
+    }
+
+     function setBridges(uint chainId, address token, address bridge) external onlyOwner {
+        bridges[chainId][token] = bridge;
     }
 
     function withdrawFee(address token) external {
@@ -106,10 +112,10 @@ contract ZKPayRollL1 is Ownable {
                 IERC20(token).approve(address(scroll_gateway), actualAmount);
                 IScrollGateway(scroll_gateway).depositERC20{value: msg.value}(token, l2Contract, actualAmount, gasUsage);
             } else if(chainId == LINEA) {
-                // require(bridges[chainId][token] != address(0), "not support now");
-                // address linea_bridge = bridges[chainId][token];
-                // IERC20(token).approve(address(linea_bridge), actualAmount); 
-                // ILineaGateway(linea_bridge).depositTo(actualAmount, l2Contract);
+                require(bridges[chainId][token] != address(0), "not support now");
+                address linea_bridge = bridges[chainId][token];
+                IERC20(token).approve(address(linea_bridge), actualAmount); 
+                ILineaGateway(linea_bridge).depositTo(actualAmount, l2Contract);
             } else {
                 require(false, "Invalid chain id");
             }

@@ -38,6 +38,7 @@
     "zksync-web3": "^0.14.3"
   },
   "dependencies": {
+    "@consensys/linea-sdk": "^0.1.6",
     "@playmint/hardhat-starknet-compile": "^1.0.3",
     "@shardlabs/starknet-hardhat-plugin": "^0.8.0-alpha.4",
     "wait": "^0.4.2"
