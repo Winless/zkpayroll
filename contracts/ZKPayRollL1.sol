@@ -24,9 +24,7 @@ interface IZKSync {
         uint256 _l2GasPerPubdataByteLimit
     ) external view returns (uint256);
 }
-//ERC20 0xF29678EA751F0EadCee11cE3627469CB0F9B42F5
-//0x927ddfcc55164a59e0f33918d13a2d559bc10ce7
-//0x4122342048f9dfc0e44E01d4EC61067B9e39e581
+
 // linea bridge 0x32D123756d32d3eD6580935f8edF416e57b940f4
 
 interface IScrollGateway {
@@ -78,6 +76,14 @@ contract ZKPayRollL1 is Ownable {
         bridges[chainId][token] = bridge;
     }
 
+    function emergencyWithdraw(address token, uint amount) external  onlyOwner {
+        if(token == address(0)) {
+            payable(owner()).transfer(amount);
+        } else {
+            IERC20(token).safeTransfer(owner(), amount);
+        }
+    }
+
     function withdrawFee(address token) external {
         if(token == address(0)) {
             payable(owner()).transfer(address(this).balance);
@@ -86,25 +92,37 @@ contract ZKPayRollL1 is Ownable {
             IERC20(token).safeTransfer(owner(), totalFee);
             tokenFees[token] = 0;
         }
-        
     }
+
+    // function claimFailedZksync(
+    //     address _l1Token,
+    //     bytes32 _l2TxHash,
+    //     uint256 _l2BlockNumber,
+    //     uint256 _l2MessageIndex,
+    //     uint16 _l2TxNumberInBlock,
+    //     bytes32[] calldata _merkleProof) external {
+        
+    // }
 
     function commitTransfer(address l2Contract, address token, uint nonce, uint chainId, uint amount, uint gasUsage) external payable {
         (, bytes memory data) = token.staticcall(
                 abi.encodeWithSignature("decimals()")
             );
-        uint fee = txFees[chainId];
-        if(fee > 0) {
-            amount = amount.sub(fee);
-            tokenFees[token] = tokenFees[token].add(fee);
-        }
         uint8 decimals = abi.decode(data, (uint8));
         require(decimals >= 6, "only support decimal greater than 4");
         require(nonce < 10000, "Invalid nonce");
         require(amount % (10 ** (decimals - 2)) == 0, "Only supports 2 decimals");
         uint actualAmount = amount + nonce * (10 ** (decimals - 6));
+        
+        uint fee = txFees[chainId].div(1e18).mul(10**decimals);
+        uint payAmount = actualAmount;
+        if(fee > 0) {
+            payAmount = payAmount.add(fee);
+            tokenFees[token] = tokenFees[token].add(fee);
+        }
+        IERC20(token).safeTransferFrom(msg.sender, address(this), payAmount);
+
         if(token != address(0)) {
-            IERC20(token).safeTransferFrom(msg.sender, address(this), actualAmount);
             if(chainId == ZKSYNC) {
                 IERC20(token).approve(address(zksync_bridge), actualAmount);
                 IZKSyncL1bridge(zksync_bridge).deposit{value: msg.value}(l2Contract, token, actualAmount, gasUsage, gasPerPubdataByte, msg.sender);

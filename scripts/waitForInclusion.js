@@ -1,20 +1,21 @@
 const { Provider } = require('zksync-web3')
 require('dotenv').config()
 
+let txHash = "0x1172b829f0b5746cd585925dfa1da44e3da572892fac3398cb20c097d89abb05"
+
 async function main() {
-  const l1TransactionHash = process.env.L1_TX_HASH
-
   const zkSyncProvider = new Provider('https://zksync2-testnet.zksync.dev')
-  const ethereumProvider = new ethers.providers.StaticJsonRpcProvider('https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161')
-  const tx = await ethereumProvider.getTransaction(l1TransactionHash)
-  console.log('Waiting for L2 block inclusion (this may take up 20 minutes)...')
+  const receipt = await provider.getTransactionReceipt(txHash);
 
-  // Getting the TransactionResponse object for the L2 transaction corresponding to the execution call
-  const l2Response = await zkSyncProvider.getL2TransactionFromPriorityOp(tx)
+// Get the L2 transaction index
+  const _l2TxNumberInBlock = receipt.transactionIndex;
 
-  // The receipt of the L2 transaction corresponding to the call to the counter contract's Increment method
-  const l2Receipt = await l2Response.wait()
-  console.log(l2Receipt)
+  // Get the L2 message index and Merkle proof
+  const logProof = await zksyncProvider.zks_getL2ToL1LogProof(txHash, logIndex);
+  const _l2MessageIndex = logProof.id;
+  const _merkleProof = logProof.proof;
+
+  console.log(receipt,_l2TxNumberInBlock, logProof, _l2MessageIndex, _merkleProof);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
