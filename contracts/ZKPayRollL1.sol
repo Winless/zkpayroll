@@ -51,6 +51,7 @@ contract ZKPayRollL1 is Ownable {
     uint constant public LINEA = 3;
 
     uint constant public gasPerPubdataByte = 800;
+    bool public status = true;
     address public zksync_bridge = 0x927DdFcc55164a59E0F33918D13a2D559bC10ce7;
     address public zkSync_api = 0x1908e2BF4a88F91E4eF0DC72f02b8Ea36BEa2319;
 
@@ -64,8 +65,12 @@ contract ZKPayRollL1 is Ownable {
 
     }
 
-    function estimateGas(uint gasPrice, uint gasUsage) external view returns(uint fee) {
-        fee = IZKSync(zkSync_api).l2TransactionBaseCost(gasPrice, gasUsage, gasPerPubdataByte);
+    function pause() external onlyOwner {
+        status = false;
+    }
+
+    function resume() external onlyOwner {
+        status = true;
     }
 
     function setFees(uint chainId, uint fee) external onlyOwner {
@@ -76,35 +81,26 @@ contract ZKPayRollL1 is Ownable {
         bridges[chainId][token] = bridge;
     }
 
-    function emergencyWithdraw(address token, uint amount) external  onlyOwner {
+    function claimFailedToken(address token, uint amount, address to) external  onlyOwner {
         if(token == address(0)) {
-            payable(owner()).transfer(amount);
+            payable(to).transfer(amount);
         } else {
-            IERC20(token).safeTransfer(owner(), amount);
+            IERC20(token).safeTransfer(to, amount);
         }
     }
 
-    function withdrawFee(address token) external {
+    function withdrawFee(address token, address to) external onlyOwner {
         if(token == address(0)) {
-            payable(owner()).transfer(address(this).balance);
+            payable(to).transfer(address(this).balance);
         } else {
             uint totalFee = tokenFees[token];
-            IERC20(token).safeTransfer(owner(), totalFee);
+            IERC20(token).safeTransfer(to, totalFee);
             tokenFees[token] = 0;
         }
     }
 
-    // function claimFailedZksync(
-    //     address _l1Token,
-    //     bytes32 _l2TxHash,
-    //     uint256 _l2BlockNumber,
-    //     uint256 _l2MessageIndex,
-    //     uint16 _l2TxNumberInBlock,
-    //     bytes32[] calldata _merkleProof) external {
-        
-    // }
-
     function commitTransfer(address l2Contract, address token, uint nonce, uint chainId, uint amount, uint gasUsage) external payable {
+        require(status, "Not enable now");
         (, bytes memory data) = token.staticcall(
                 abi.encodeWithSignature("decimals()")
             );

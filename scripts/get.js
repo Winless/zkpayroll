@@ -1,20 +1,21 @@
-const { Provider } = require('zksync-web3')
+const { Provider } = require('zksync2-js')
 require('dotenv').config()
 
-let txHash = "0x1172b829f0b5746cd585925dfa1da44e3da572892fac3398cb20c097d89abb05"
-
+let txHash = "0x821f9c4780c158421921aece1b6b6d25d9f95829a2f99a8e07f1cb89d868dc68"
+const hre = require('hardhat')
 async function main() {
   const zksyncProvider = new Provider('https://zksync2-testnet.zksync.dev')
-  const receipt = await zksyncProvider.getTransactionReceipt(txHash);
-  const logIndex = receipt.logs[0].logIndex;
-
+  
+  const ethereumProvider = new hre.ethers.providers.StaticJsonRpcProvider('https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161')
+  // const logIndex = receipt.logs[0].logIndex;
+  const receipt = await ethereumProvider.getTransactionReceipt(txHash);
 // Get the L2 transaction index
-  const _l2TxNumberInBlock = receipt.transactionIndex;
+  // const _l2TxNumberInBlock = receipt.transactionIndex;
 
   // Get the L2 message index and Merkle proof
-  
+  const l2Hash = zksyncProvider.getL2TransactionFromPriorityOp(receipt);
 
-  console.log(receipt, _l2TxNumberInBlock);
+  console.log(receipt, l2Hash);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
