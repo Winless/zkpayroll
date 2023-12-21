@@ -53,7 +53,7 @@ interface ILineaGateway {
 }
 
 contract ZKPayRollL1 is Ownable, Pausable {
-    event TransferCommited(address sender, uint totalAmount, address token, uint index, uint chainId);
+    event TransferCommited(address sender, uint totalAmount, address token, uint index, uint chainId, uint fee);
 
     using SafeERC20 for IERC20;
     using SafeMath for uint;
@@ -61,14 +61,15 @@ contract ZKPayRollL1 is Ownable, Pausable {
     uint constant public ZKSYNC = 1;
     uint constant public SCROLL = 2;
     uint constant public LINEA = 3;
+    uint constant public BSC = 4;
 
     uint constant public gasPerPubdataByte = 800;
-    address public zksync_bridge = 0x57891966931Eb4Bb6FB81430E6cE0A03AAbDe063;
-    address public scroll_gateway = 0xD8A791fE2bE73eb6E6cF1eb0cb3F36adC9B3F8f9;
-    address public bsc_bridge = 0x5427FEFA711Eff984124bFBB1AB6fbf5E3DA1820;
+    address public zksync_bridge = 0x927DdFcc55164a59E0F33918D13a2D559bC10ce7;
+    address public scroll_gateway = 0x65D123d6389b900d954677c26327bfc1C3e88A13;
+    address public bsc_bridge = 0x358234B325EF9eA8115291A8b81b7d33A2Fa762D;
 
-    address public USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address public USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+    address public USDC = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F;
+    address public USDT = 0xf4B2cbc3bA04c478F0dC824f4806aC39982Dce73;
     mapping (uint => uint) public txFees;
     mapping (address => uint) public tokenFees;
     mapping (uint => mapping (address => address)) public bridges;
@@ -124,7 +125,7 @@ contract ZKPayRollL1 is Ownable, Pausable {
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount + fee);
         checkApprove(token, bsc_bridge, amount);
         IBSCBridge(bsc_bridge).send(l2Contract, token, amount + fee, 56, nonce, 20000);
-        emit TransferCommited(msg.sender, amount, token, nonce, 4);
+        emit TransferCommited(msg.sender, amount, token, nonce, BSC, fee);
     }
 
     function commitTransfer(address l2Contract, address token, uint nonce, uint chainId, uint amount, uint gasUsage) external payable {
@@ -135,7 +136,8 @@ contract ZKPayRollL1 is Ownable, Pausable {
         require(decimals >= 6, "only support decimal greater than 4");
         require(nonce < 10000, "Invalid nonce");
         require(amount % (10 ** (decimals - 2)) == 0, "Only supports 2 decimals");
-        uint actualAmount = amount + nonce * (10 ** (decimals - 6));
+        uint cross_fee = nonce * (10 ** (decimals - 6));
+        uint actualAmount = amount;
         
         uint fee = txFees[chainId].div(1e18).mul(10**decimals);
         uint payAmount = actualAmount;
@@ -160,7 +162,7 @@ contract ZKPayRollL1 is Ownable, Pausable {
             } else {
                 require(false, "Invalid chain id");
             }
-            emit TransferCommited(msg.sender, amount, token, nonce, chainId);
+            emit TransferCommited(msg.sender, amount, token, nonce, chainId, cross_fee);
         }
     }
 }
