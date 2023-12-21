@@ -4,7 +4,6 @@ pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
 interface IZKSyncL1bridge {
@@ -56,7 +55,6 @@ contract ZKPayRollL1 is Ownable, Pausable {
     event TransferCommited(address sender, uint totalAmount, address token, uint index, uint chainId, uint fee);
 
     using SafeERC20 for IERC20;
-    using SafeMath for uint;
 
     uint constant public ZKSYNC = 1;
     uint constant public SCROLL = 2;
@@ -121,10 +119,10 @@ contract ZKPayRollL1 is Ownable, Pausable {
         }
     }
 
-    function commitTransferBSC(address l2Contract, address token, uint64 nonce, uint amount, uint fee) external {
+    function commitTransferBSC(address l2Contract, address token, uint64 chainId, uint64 nonce, uint amount, uint fee) external {
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount + fee);
         checkApprove(token, bsc_bridge, amount);
-        IBSCBridge(bsc_bridge).send(l2Contract, token, amount + fee, 56, nonce, 20000);
+        IBSCBridge(bsc_bridge).send(l2Contract, token, amount + fee, chainId, nonce, 20000);
         emit TransferCommited(msg.sender, amount, token, nonce, BSC, fee);
     }
 
@@ -139,11 +137,11 @@ contract ZKPayRollL1 is Ownable, Pausable {
         uint cross_fee = nonce * (10 ** (decimals - 6));
         uint actualAmount = amount;
         
-        uint fee = txFees[chainId].div(1e18).mul(10**decimals);
+        uint fee = txFees[chainId] / 1e18 * (10**decimals);
         uint payAmount = actualAmount;
         if(fee > 0) {
-            payAmount = payAmount.add(fee);
-            tokenFees[token] = tokenFees[token].add(fee);
+            payAmount += fee;
+            tokenFees[token] += fee;
         }
         IERC20(token).safeTransferFrom(msg.sender, address(this), payAmount);
 

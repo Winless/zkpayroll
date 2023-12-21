@@ -1,5 +1,4 @@
-require('@matterlabs/hardhat-zksync-deploy')
-require('@matterlabs/hardhat-zksync-solc')
+
 require('@nomicfoundation/hardhat-toolbox')
 require('hardhat-deploy')
 require('dotenv').config()
@@ -32,7 +31,7 @@ module.exports = {
     },
   },
   solidity: {
-    version: '0.8.17',
+    version: '0.8.20',
     settings: {
       optimizer: {
         enabled: true,

@@ -2,11 +2,10 @@
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract ZKPayRollL2 is ReentrancyGuard, Ownable {
     bytes32 public root;
@@ -17,11 +16,14 @@ contract ZKPayRollL2 is ReentrancyGuard, Ownable {
     mapping (address => uint) public tokenFees;
 
     using SafeERC20 for IERC20;
-    using SafeMath for uint;
 
     event TransferScroll(address user, uint amount, address tokenL1, address sender);
     event UpdateRoot(bytes32 oldRoot, bytes32 newRoot);
     event Withdraw(address user, address token, uint amount, uint fee);
+
+    constructor(address owner) Ownable(owner){
+
+    }
 
     function updateRoot(bytes32 _newRoot) external onlyOwner {
         emit UpdateRoot(root, _newRoot);
@@ -64,10 +66,10 @@ contract ZKPayRollL2 is ReentrancyGuard, Ownable {
                 abi.encodeWithSignature("decimals()")
             );
             uint8 decimals = abi.decode(decimalData, (uint8));
-            fee = txFee.div(1e18).mul(10**decimals);
+            fee = txFee / 1e18 * (10**decimals);
             require(withdrawAmt >= fee, "Insufficient fee");
-            withdrawAmt = withdrawAmt.sub(fee);
-            tokenFees[token] = tokenFees[token].add(fee);
+            withdrawAmt -= fee;
+            tokenFees[token] += fee;
         }
         
         IERC20(token).safeTransfer(msg.sender, withdrawAmt);

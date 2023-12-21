@@ -2,12 +2,10 @@
 pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract StakePool is Ownable {
     using SafeERC20 for IERC20;
-    using SafeMath for uint;
     IERC20 public xld;
     uint public stakingReward;
     uint public transferReward;
@@ -25,7 +23,7 @@ contract StakePool is Ownable {
     event AddReward(uint transfer, uint staking);
     event SetReward(address[] users, uint[] amounts, uint total);
 
-    constructor(IERC20 _xld) {
+    constructor(IERC20 _xld, address owner) Ownable(owner){
         xld = _xld;
     }
 
@@ -36,28 +34,28 @@ contract StakePool is Ownable {
 
     function stake(uint amount) external  {
         xld.safeTransferFrom(msg.sender, address(this), amount);
-        stakes[msg.sender] = stakes[msg.sender].add(amount);
-        totalStake = totalStake.add(amount);
+        stakes[msg.sender] += amount;
+        totalStake += amount;
         emit Stake(msg.sender, amount);
     }
 
     function withdraw(uint amount) external {
-        stakes[msg.sender] = stakes[msg.sender].sub(amount);
+        stakes[msg.sender] -= amount;
         xld.safeTransfer(msg.sender, amount);
-        totalStake = totalStake.sub(amount);
+        totalStake -= amount;
         emit Withdraw(msg.sender, amount);
     }
 
     function claim(uint amount) external {
-        rewards[msg.sender] = rewards[msg.sender].sub(amount);
+        rewards[msg.sender] -= amount;
         xld.safeTransfer(msg.sender, amount);
         emit Claim(msg.sender, amount);
     }
 
     function addReward(uint _transferReward, uint _stakingReward) external {
         xld.safeTransferFrom(msg.sender, address(this), _transferReward + _stakingReward);
-        transferReward = transferReward.add(_transferReward);
-        stakingReward = stakingReward.add(_stakingReward);
+        transferReward += _transferReward;
+        stakingReward += _stakingReward;
         emit AddReward(_transferReward, _stakingReward);
     }
 
@@ -67,11 +65,11 @@ contract StakePool is Ownable {
         uint len = amounts.length;
         uint total = 0;
         for(uint i = 0; i < len;i++) {
-            rewards[users[i]] = rewards[users[i]].add(amounts[i]);
-            total = total.add(amounts[i]);
+            rewards[users[i]] += amounts[i];
+            total += amounts[i];
         }
 
-        require(transferReward.add(stakingReward) >= total, "Remain reward not enough");
+        require(transferReward + stakingReward >= total, "Remain reward not enough");
         transferReward = 0;
         stakingReward = 0;
         emit SetReward(users, amounts, total);  
